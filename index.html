@@ -24,15 +24,6 @@
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
         }
 
-        @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .animate-spin-slow { animation: spin-slow 12s linear infinite; }
-        
-        @keyframes breathe {
-            0%, 100% { opacity: 0.4; transform: scale(1); }
-            50% { opacity: 0.9; transform: scale(1.1); }
-        }
-        .breathe-light { animation: breathe 3s ease-in-out infinite; }
-
         #video-container {
             width: 80px; height: 60px;
             overflow: hidden; border-radius: 0.75rem;
@@ -45,7 +36,6 @@
         }
         #video-container video { width: 100%; height: 100%; object-fit: cover; }
 
-        /* 优化标题容器，防止文字切换时抖动 */
         #title-container { min-height: 1.5em; }
     </style>
 </head>
@@ -53,8 +43,6 @@
 
     <!-- UI 层 -->
     <div id="ui-layer" class="pointer-events-none absolute inset-0 z-50 flex flex-col justify-between p-4 md:p-10 pb-8 md:pb-12">
-        
-        <!-- 右上角控制 -->
         <div class="flex justify-end items-start">
             <div class="flex flex-col items-end gap-2 md:gap-4 pointer-events-auto">
                 <div class="glass p-1.5 md:p-2 rounded-[1rem] relative">
@@ -75,14 +63,12 @@
             </div>
         </div>
 
-        <!-- 中央标题：修复 "y" 被裁剪并支持文案切换 -->
         <div id="title-container" class="text-center py-6 md:py-16 pb-24 md:pb-40 px-4">
             <h1 id="hero-title" class="text-4xl sm:text-6xl md:text-7xl lg:text-[9rem] font-cursive text-transparent bg-clip-text bg-gradient-to-b from-white via-yellow-100 to-yellow-500 drop-shadow-[0_10px_30px_rgba(234,179,8,0.4)] select-none leading-[1.5] transition-opacity duration-500">
                 Merry Christmas
             </h1>
         </div>
 
-        <!-- 底部音乐栏 -->
         <div class="flex justify-center items-center">
             <div class="glass px-5 py-2.5 md:px-10 md:py-5 rounded-full flex items-center gap-3 md:gap-8 pointer-events-auto max-w-full">
                 <div class="relative w-6 h-6 md:w-12 md:h-12 flex items-center justify-center flex-shrink-0">
@@ -104,8 +90,7 @@
             FilesetResolver
         } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3";
 
-        /** --- 1. 全局变量声明与状态 --- **/
-        let scene, camera, renderer, particles, treeLights, star, snowflakes, propsGroup, trailParticles;
+        let scene, camera, renderer, particles, treeLights, star, snowflakes, propsGroup;
         let photoGroup = new THREE.Group(); 
         let phase = 'tree'; 
         let globalBeat = 0.5; 
@@ -115,31 +100,21 @@
 
         const particleCount = isMobile ? 6000 : 9000;
         const lightStringCount = isMobile ? 800 : 1200;
+        
         const myImages = [
-            "https://i1.hdslb.com/bfs/new_dyn/075b0a90eca974408bf5b118b44b3caf286431045.jpg@1192w.avif",
-            "https://i1.hdslb.com/bfs/new_dyn/a9081380f6c38cfc7105ceed0c0dc262286431045.jpg@1192w.avif",
-            "https://i1.hdslb.com/bfs/new_dyn/adcf3d7c7fe42db597c2c29bbdf5e608286431045.jpg@1192w.avif",
-            "https://i1.hdslb.com/bfs/new_dyn/d29ea8d66c33bb4ff49fb39d99c6658a286431045.jpg@1192w.avif",
-            "https://i1.hdslb.com/bfs/new_dyn/9aa511bcd1e52f29465b742fc52cbc75286431045.jpg@1192w.avif",
-            "https://i1.hdslb.com/bfs/new_dyn/62629249d7da5cc5b69b2ad9bdc031aa286431045.jpg@1192w.avif",
-            "https://i1.hdslb.com/bfs/article/fb13ac82b4ec45bc249b98fd442a3f0b286431045.jpg@1192w.avif",
-            "https://i1.hdslb.com/bfs/article/b3f486c92b2a6c853c79b1c0f1cbf5d4286431045.jpg@1192w.avif",
-            "https://i1.hdslb.com/bfs/article/9fa5f592bde7766a62d20231dcc840d3286431045.jpg@1192w.avif",
-            "https://i1.hdslb.com/bfs/article/3adcc2eec76dbaf263c0e3c3c6ba36c1286431045.jpg@1192w.avif",
-            "https://i1.hdslb.com/bfs/article/9d7b41d0bb2582689ca1f0b56115fd7b286431045.jpg@1192w.avif",
-            "https://i1.hdslb.com/bfs/article/678ae8b0c1dd34971047f925b04b828c286431045.jpg@1192w.avif",
-            "https://i1.hdslb.com/bfs/article/7f5643d89e17543ee9f5eb2c3e0c8e32286431045.jpg@1192w.avif"
+            "./1.jpg", "./2.jpg", "./3.jpg", "./4.jpg", "./5.jpg", 
+            "./6.jpg", "./7.jpg", "./8.jpg", "./9.jpg", "./10.jpg", 
+            "./11.jpg", "./12.jpg", "./13.jpg"
         ];
         const photoCount = myImages.length;
         const bgMusicUrl = "https://raw.githubusercontent.com/Eric-dot/-christmas-trees-/main/Last%20Christmas.mp3"; 
         const customBgUrl = "https://images.pexels.com/photos/1175136/pexels-photo-1175136.jpeg";
 
-        const positions = { tree: [], rotations: [], scaleFactors: [], lightsTree: [], nebula: [], lightsNebula: [] };
-        const dummy = new THREE.Object3D();
         const fireworks = [];
         const fwGroup = new THREE.Group();
+        const positions = { tree: [], rotations: [], scaleFactors: [], lightsTree: [], nebula: [], lightsNebula: [] };
+        const dummy = new THREE.Object3D();
 
-        /** --- 2. 核心类定义 --- **/
         
         class RealFirework {
             constructor() {
@@ -175,8 +150,6 @@
             cleanup() { this.particles.forEach(p => fwGroup.remove(p.mesh)); }
         }
 
-        /** --- 3. 几何体与材质辅助函数 --- **/
-
         function createCandyStripeTexture() {
             const canvas = document.createElement('canvas');
             canvas.width = 128; canvas.height = 128;
@@ -205,8 +178,8 @@
         function createDetailedProp(type, color) {
             const group = new THREE.Group();
             if (type === 'GIFT') {
-                const boxColor = 0xd32f2f; // 红色盒子
-                const ribbonColor = 0xffd700; // 黄色礼带
+                const boxColor = 0xd32f2f; 
+                const ribbonColor = 0xffd700; 
                 const boxMat = new THREE.MeshStandardMaterial({ color: boxColor, metalness: 0.2, roughness: 0.4, emissive: boxColor, emissiveIntensity: 0.1 });
                 group.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), boxMat));
                 const ribMat = new THREE.MeshStandardMaterial({ color: ribbonColor, metalness: 0.8, roughness: 0.1, emissive: ribbonColor, emissiveIntensity: 0.1 });
@@ -233,9 +206,8 @@
                         pts.push(new THREE.Vector3(Math.sin(angle)*0.2, -0.44 - Math.cos(angle)*0.2, 0));
                     }
                 }
-                const candyGeo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, 0.07, 12, false);
                 const candyMat = new THREE.MeshStandardMaterial({ map: createCandyStripeTexture(), roughness: 0.2, metalness: 0.1 });
-                group.add(new THREE.Mesh(candyGeo, candyMat));
+                group.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, 0.07, 12, false), candyMat));
             } else if (type === 'BAUBLE') {
                 group.add(new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 16), new THREE.MeshStandardMaterial({ color: color, metalness: 0.9, emissive: color, emissiveIntensity: 0.2 })));
             }
@@ -249,7 +221,7 @@
                 bgMusic = new Audio(bgMusicUrl);
                 bgMusic.loop = true; bgMusic.volume = 0.5;
             }
-            bgMusic.play().catch(e => console.log("BGM 自动播放被拦截"));
+            bgMusic.play().catch(() => {});
         }
 
         function playBoomSound() {
@@ -265,7 +237,6 @@
             source.start();
         }
 
-        /** --- 3. 适配逻辑 --- **/
         function updateBackgroundFit() {
             if (!scene || !scene.background || !scene.background.image) return;
             const img = scene.background.image;
@@ -299,12 +270,13 @@
                     baseOptions: { modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`, delegate: "GPU" },
                     runningMode: "VIDEO", numHands: 1
                 });
-            } catch (e) { console.error("Init Vision Error"); }
+            } catch (e) { console.error("MediaPipe Init Error"); }
         }
 
         function initScene() {
             scene = new THREE.Scene();
             const tL = new THREE.TextureLoader();
+
             tL.load(customBgUrl, (t) => {
                 t.anisotropy = renderer.capabilities.getMaxAnisotropy();
                 t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
@@ -370,8 +342,14 @@
             photoGroup.visible = false;
             for (let i = 0; i < photoCount; i++) {
                 const angle = (i / photoCount) * Math.PI * 2, ringRadius = isMobile ? 40 : 50, frame = new THREE.Group();
-                const inner = new THREE.Mesh(new THREE.PlaneGeometry(isMobile ? 18 : 28, isMobile ? 11 : 17), new THREE.MeshBasicMaterial({ transparent: true, opacity: 1.0 }));
-                tL.load(myImages[i], (t) => { inner.material.map = t; if(t.image && t.image.width < t.image.height) inner.scale.set(0.6, 0.6, 1); inner.material.needsUpdate = true; });
+                const inner = new THREE.Mesh(new THREE.PlaneGeometry(isMobile ? 18 : 28, isMobile ? 11 : 17), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+                
+                tL.load(myImages[i], (t) => { 
+                    inner.material.map = t; 
+                    if(t.image && t.image.width < t.image.height) inner.scale.set(0.6, 0.6, 1); 
+                    inner.material.needsUpdate = true; 
+                });
+
                 frame.add(inner); frame.position.set(Math.cos(angle)*ringRadius, 0, Math.sin(angle)*ringRadius);
                 frame.lookAt(0, 0, 0); frame.userData = { originalAngle: angle }; photoGroup.add(frame);
             }
@@ -382,7 +360,6 @@
             window.addEventListener('touchstart', initAudio, { once: true });
         }
 
-        /** --- 4. 动画循环 --- **/
         function animate() {
             requestAnimationFrame(animate);
             if (!renderer || !scene || !camera) return;
@@ -409,7 +386,6 @@
                     let diff = ang; if (diff > Math.PI) diff -= Math.PI*2; if (diff < -Math.PI) diff += Math.PI*2;
                     const isViewable = Math.abs(diff) < 1.8; 
                     c.visible = isViewable;
-                    if (c.children[0].material) c.children[0].material.opacity = 1.0;
                     c.scale.setScalar(isViewable ? 1.0 : 0.5);
                 });
             }
@@ -454,34 +430,25 @@
             renderer.render(scene, camera);
         }
 
-        /** --- 6. 相位管理 (核心改进：标题文案切换) --- **/
         window.changePhase = function(newPhase) {
             if (phase === newPhase) return;
             phase = newPhase;
             const titleEl = document.getElementById('hero-title');
-
             if (phase === 'blooming') {
-                // 1. 标题淡出并切换文案
                 gsap.to(titleEl, { opacity: 0, duration: 0.4, onComplete: () => {
                     titleEl.innerText = "Wishing you a joyful Christmas";
                     gsap.to(titleEl, { opacity: 1, duration: 0.6 });
                 }});
-
                 if(star) gsap.to(star.scale, { x: 0, y: 0, z: 0, duration: 1 });
                 if(particles.material) gsap.to(particles.material, { opacity: 0.2, duration: 1.5 });
                 if(treeLights.material) gsap.to(treeLights.material, { opacity: 0.2, duration: 1.5 });
                 propsGroup.children.forEach(o => gsap.to(o.position, { x: o.userData.nebulaTarget.x, y: o.userData.nebulaTarget.y, z: o.userData.nebulaTarget.z, duration: 2 }));
-                setTimeout(() => { 
-                    if(photoGroup) { photoGroup.visible = true; photoGroup.scale.set(0,0,0); gsap.to(photoGroup.scale, { x: 1, y: 1, z: 1, duration: 1.0, ease: "back.out(1.7)" }); } 
-                    changePhase('nebula'); 
-                }, 1500);
+                setTimeout(() => { if(photoGroup) { photoGroup.visible = true; photoGroup.scale.set(0,0,0); gsap.to(photoGroup.scale, { x: 1, y: 1, z: 1, duration: 1.0, ease: "back.out(1.7)" }); } changePhase('nebula'); }, 1500);
             } else if (phase === 'collapsing') {
-                // 2. 标题恢复
                 gsap.to(titleEl, { opacity: 0, duration: 0.4, onComplete: () => {
                     titleEl.innerText = "Merry Christmas";
                     gsap.to(titleEl, { opacity: 1, duration: 0.6 });
                 }});
-
                 if(photoGroup) gsap.to(photoGroup.scale, { x: 0, y: 0, z: 0, duration: 1, onComplete: () => photoGroup.visible = false });
                 if(star) gsap.to(star.scale, { x: 1, y: 1, z: 1, duration: 1, delay: 0.5 });
                 if(particles.material) gsap.to(particles.material, { opacity: 1.0, duration: 1.5 });
@@ -502,7 +469,7 @@
                         const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
                         videoElement.srcObject = s;
                         videoElement.onloadedmetadata = () => { webcamRunning = true; ph.style.display = "none"; btn.innerText = "交互在线"; };
-                    } catch (e) { console.warn("Cam access denied"); }
+                    } catch (e) { console.warn("Cam denied"); }
                 } else {
                     webcamRunning = false; btn.innerText = "开启交互"; ph.style.display = "flex";
                     if(videoElement.srcObject) videoElement.srcObject.getTracks().forEach(t => t.stop());
