@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>3D 圣诞精雕全设备适配互动系统</title>
+    <title>3D 圣诞精雕互动系统</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
@@ -22,6 +22,24 @@
             -webkit-backdrop-filter: blur(25px);
             border: 1px solid rgba(255, 255, 255, 0.15);
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        /* 微信引导遮罩样式 */
+        #wechat-guide {
+            display: none; /* 默认隐藏 */
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9); z-index: 1000;
+        }
+        .guide-arrow {
+            position: absolute; top: 20px; right: 20px;
+            width: 60px; height: 60px;
+            border-top: 4px solid #facc15; border-right: 4px solid #facc15;
+            transform: rotate(-15deg);
+            animation: arrow-jump 0.8s infinite alternate;
+        }
+        @keyframes arrow-jump {
+            from { transform: translate(0, 0) rotate(-15deg); }
+            to { transform: translate(-10px, 10px) rotate(-15deg); }
         }
 
         @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -44,12 +62,22 @@
             #video-container { width: 160px; height: 120px; border-radius: 1rem; }
         }
         #video-container video { width: 100%; height: 100%; object-fit: cover; }
-
-        /* 优化标题容器，防止文字切换时抖动 */
-        #title-container { min-height: 1.5em; }
     </style>
 </head>
 <body>
+
+    <!-- 微信内部打开时的引导层 -->
+    <div id="wechat-guide" class="flex flex-col items-center justify-center p-10 text-center">
+        <div class="guide-arrow"></div>
+        <div class="mt-20">
+            <p class="text-yellow-400 text-2xl font-bold mb-4">为了完美的 3D 互动体验</p>
+            <p class="text-white text-lg opacity-80">请点击右上角 <span class="text-yellow-400">“...”</span></p>
+            <p class="text-white text-lg opacity-80 mt-2">选择 <span class="bg-white text-black px-2 py-1 rounded font-bold">在浏览器中打开</span></p>
+        </div>
+        <div class="mt-32 text-xs text-white/30 tracking-widest uppercase">
+            Merry Christmas & Happy New Year
+        </div>
+    </div>
 
     <!-- UI 层 -->
     <div id="ui-layer" class="pointer-events-none absolute inset-0 z-50 flex flex-col justify-between p-4 md:p-10 pb-8 md:pb-12">
@@ -75,7 +103,7 @@
             </div>
         </div>
 
-        <!-- 中央标题：修复 "y" 被裁剪并支持文案切换 -->
+        <!-- 中央标题 -->
         <div id="title-container" class="text-center py-6 md:py-16 pb-24 md:pb-40 px-4">
             <h1 id="hero-title" class="text-4xl sm:text-6xl md:text-7xl lg:text-[9rem] font-cursive text-transparent bg-clip-text bg-gradient-to-b from-white via-yellow-100 to-yellow-500 drop-shadow-[0_10px_30px_rgba(234,179,8,0.4)] select-none leading-[1.5] transition-opacity duration-500">
                 Merry Christmas
@@ -104,8 +132,8 @@
             FilesetResolver
         } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3";
 
-        /** --- 1. 全局变量声明与状态 --- **/
-        let scene, camera, renderer, particles, treeLights, star, snowflakes, propsGroup, trailParticles;
+        /** --- 1. 全局变量与状态 --- **/
+        let scene, camera, renderer, particles, treeLights, star, propsGroup;
         let photoGroup = new THREE.Group(); 
         let phase = 'tree'; 
         let globalBeat = 0.5; 
@@ -134,12 +162,24 @@
         const bgMusicUrl = "https://raw.githubusercontent.com/Eric-dot/-christmas-trees-/main/Last%20Christmas.mp3"; 
         const customBgUrl = "https://images.pexels.com/photos/1175136/pexels-photo-1175136.jpeg";
 
-        const positions = { tree: [], rotations: [], scaleFactors: [], lightsTree: [], nebula: [], lightsNebula: [] };
-        const dummy = new THREE.Object3D();
         const fireworks = [];
         const fwGroup = new THREE.Group();
+        const positions = { tree: [], rotations: [], scaleFactors: [], lightsTree: [], nebula: [], lightsNebula: [] };
+        const dummy = new THREE.Object3D();
 
-        /** --- 2. 核心类定义 --- **/
+        /** --- 微信浏览器环境检测 (核心改进) --- **/
+        function checkWechat() {
+            const ua = navigator.userAgent.toLowerCase();
+            const guide = document.getElementById('wechat-guide');
+            if (ua.match(/MicroMessenger/i) == "micromessenger") {
+                guide.style.display = 'block';
+                return true;
+            }
+            guide.style.display = 'none';
+            return false;
+        }
+
+        /** --- 2. 核心类与辅助函数 --- **/
         
         class RealFirework {
             constructor() {
@@ -175,8 +215,6 @@
             cleanup() { this.particles.forEach(p => fwGroup.remove(p.mesh)); }
         }
 
-        /** --- 3. 几何体与材质辅助函数 --- **/
-
         function createCandyStripeTexture() {
             const canvas = document.createElement('canvas');
             canvas.width = 128; canvas.height = 128;
@@ -205,11 +243,9 @@
         function createDetailedProp(type, color) {
             const group = new THREE.Group();
             if (type === 'GIFT') {
-                const boxColor = 0xd32f2f; // 红色盒子
-                const ribbonColor = 0xffd700; // 黄色礼带
-                const boxMat = new THREE.MeshStandardMaterial({ color: boxColor, metalness: 0.2, roughness: 0.4, emissive: boxColor, emissiveIntensity: 0.1 });
+                const boxMat = new THREE.MeshStandardMaterial({ color: 0xd32f2f, metalness: 0.2, roughness: 0.4, emissive: 0xd32f2f, emissiveIntensity: 0.1 });
                 group.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), boxMat));
-                const ribMat = new THREE.MeshStandardMaterial({ color: ribbonColor, metalness: 0.8, roughness: 0.1, emissive: ribbonColor, emissiveIntensity: 0.1 });
+                const ribMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.8, roughness: 0.1, emissive: 0xffd700, emissiveIntensity: 0.1 });
                 group.add(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.52, 0.52), ribMat));
                 group.add(new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.52, 0.12), ribMat));
                 const bowGeo = new THREE.TorusGeometry(0.1, 0.03, 8, 16);
@@ -233,9 +269,8 @@
                         pts.push(new THREE.Vector3(Math.sin(angle)*0.2, -0.44 - Math.cos(angle)*0.2, 0));
                     }
                 }
-                const candyGeo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, 0.07, 12, false);
                 const candyMat = new THREE.MeshStandardMaterial({ map: createCandyStripeTexture(), roughness: 0.2, metalness: 0.1 });
-                group.add(new THREE.Mesh(candyGeo, candyMat));
+                group.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, 0.07, 12, false), candyMat));
             } else if (type === 'BAUBLE') {
                 group.add(new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 16), new THREE.MeshStandardMaterial({ color: color, metalness: 0.9, emissive: color, emissiveIntensity: 0.2 })));
             }
@@ -249,7 +284,7 @@
                 bgMusic = new Audio(bgMusicUrl);
                 bgMusic.loop = true; bgMusic.volume = 0.5;
             }
-            bgMusic.play().catch(e => console.log("BGM 自动播放被拦截"));
+            bgMusic.play().catch(() => {});
         }
 
         function playBoomSound() {
@@ -265,7 +300,7 @@
             source.start();
         }
 
-        /** --- 3. 适配逻辑 --- **/
+        /** --- 3. 适配与场景渲染 --- **/
         function updateBackgroundFit() {
             if (!scene || !scene.background || !scene.background.image) return;
             const img = scene.background.image;
@@ -299,7 +334,7 @@
                     baseOptions: { modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`, delegate: "GPU" },
                     runningMode: "VIDEO", numHands: 1
                 });
-            } catch (e) { console.error("Init Vision Error"); }
+            } catch (e) { console.error("MediaPipe Init Error"); }
         }
 
         function initScene() {
@@ -454,34 +489,26 @@
             renderer.render(scene, camera);
         }
 
-        /** --- 6. 相位管理 (核心改进：标题文案切换) --- **/
+        /** --- 6. 相位管理 --- **/
         window.changePhase = function(newPhase) {
             if (phase === newPhase) return;
             phase = newPhase;
             const titleEl = document.getElementById('hero-title');
-
             if (phase === 'blooming') {
-                // 1. 标题淡出并切换文案
                 gsap.to(titleEl, { opacity: 0, duration: 0.4, onComplete: () => {
-                    titleEl.innerText = "Wishing you a joyful Christmas";
+                    titleEl.innerText = "Wishing you a joyful Christmas!";
                     gsap.to(titleEl, { opacity: 1, duration: 0.6 });
                 }});
-
                 if(star) gsap.to(star.scale, { x: 0, y: 0, z: 0, duration: 1 });
                 if(particles.material) gsap.to(particles.material, { opacity: 0.2, duration: 1.5 });
                 if(treeLights.material) gsap.to(treeLights.material, { opacity: 0.2, duration: 1.5 });
                 propsGroup.children.forEach(o => gsap.to(o.position, { x: o.userData.nebulaTarget.x, y: o.userData.nebulaTarget.y, z: o.userData.nebulaTarget.z, duration: 2 }));
-                setTimeout(() => { 
-                    if(photoGroup) { photoGroup.visible = true; photoGroup.scale.set(0,0,0); gsap.to(photoGroup.scale, { x: 1, y: 1, z: 1, duration: 1.0, ease: "back.out(1.7)" }); } 
-                    changePhase('nebula'); 
-                }, 1500);
+                setTimeout(() => { if(photoGroup) { photoGroup.visible = true; photoGroup.scale.set(0,0,0); gsap.to(photoGroup.scale, { x: 1, y: 1, z: 1, duration: 1.0, ease: "back.out(1.7)" }); } changePhase('nebula'); }, 1500);
             } else if (phase === 'collapsing') {
-                // 2. 标题恢复
                 gsap.to(titleEl, { opacity: 0, duration: 0.4, onComplete: () => {
                     titleEl.innerText = "Merry Christmas";
                     gsap.to(titleEl, { opacity: 1, duration: 0.6 });
                 }});
-
                 if(photoGroup) gsap.to(photoGroup.scale, { x: 0, y: 0, z: 0, duration: 1, onComplete: () => photoGroup.visible = false });
                 if(star) gsap.to(star.scale, { x: 1, y: 1, z: 1, duration: 1, delay: 0.5 });
                 if(particles.material) gsap.to(particles.material, { opacity: 1.0, duration: 1.5 });
@@ -492,6 +519,7 @@
         }
 
         async function startApp() {
+            checkWechat(); // 启动检测
             initScene(); await initHandLandmarker();
             const btn = document.getElementById("cam-btn"), ph = document.getElementById("cam-placeholder");
             videoElement = document.getElementById("webcam");
@@ -502,7 +530,7 @@
                         const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
                         videoElement.srcObject = s;
                         videoElement.onloadedmetadata = () => { webcamRunning = true; ph.style.display = "none"; btn.innerText = "交互在线"; };
-                    } catch (e) { console.warn("Cam access denied"); }
+                    } catch (e) { console.warn("Camera access denied"); }
                 } else {
                     webcamRunning = false; btn.innerText = "开启交互"; ph.style.display = "flex";
                     if(videoElement.srcObject) videoElement.srcObject.getTracks().forEach(t => t.stop());
